@@ -1,0 +1,12 @@
+<begin_table>
+temp1
+A
+B
+C
+D
+<end_table>
+<begin_table>
+temp2
+D
+E
+<end_table>
