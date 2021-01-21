@@ -264,20 +264,23 @@ def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,que
 
 		#defining Indexes as per new table after groupBy operation
 		newIndexes = []
+		newIndexesDict = {}
 		count = 0
 		for col in queryGroupByColumns:
 			newIndexes.append([col,count])
+			newIndexesDict[col] = count
 			count+=1
 		for col in indexes:
 			if(col not in queryGroupByColumns):
 				newIndexes.append([col,count])
+				newIndexesDict[col] = count
 				count+=1
 
 		# print(newIndexes)
 		# sys.exit()	
 
 		# onlyGroupByFinalTableColumns = groupByFinalTable.copy()
-		print(onlyGroupByFinalTableColumns)
+		# print(onlyGroupByFinalTableColumns)
 		# transposedTable = transpose(finalTable.copy())
 		for row in groupByFinalTable:
 			for iterator in range(len(queryGroupByColumns),len(indexes)):
@@ -290,13 +293,67 @@ def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,que
 			# print(groupByFinalTable)
 
 			reqIndex = onlyGroupByFinalTableColumns.index(temp)
-			print(reqIndex)
+			# print(reqIndex)
 			for iterator in range(len(queryGroupByColumns),len(indexes)):
 				# print(iterator)
 				groupByFinalTable[reqIndex][newIndexes[iterator][1]].append(row[indexes[newIndexes[iterator][0]]])
 		
 		print(groupByFinalTable)
-		sys.exit()
+		# sys.exit()
+		printingTable = []
+		for row in groupByFinalTable:
+			printingTable.append([])
+
+		for query in aggregateQueries:
+			query = query.split(":")
+			col = query[1]
+			query = query[0]
+			colNumber = newIndexesDict[col]
+			
+			if(query=="max"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(max(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append(groupByFinalTable[row][colNumber])
+
+			if(query=="min"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(min(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append(groupByFinalTable[row][colNumber])
+
+			if(query=="avg"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(sum(groupByFinalTable[row][colNumber])/len(sum(groupByFinalTable[row][colNumber])))
+					else:
+						printingTable[row].append(float(groupByFinalTable[row][colNumber]))
+
+			if(query=="sum"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(sum(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append((groupByFinalTable[row][colNumber])*len((groupByFinalTable[row][len(groupByFinalTable[row])-1])))
+
+			if(query=="count"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(len(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append(len((groupByFinalTable[row][len(groupByFinalTable[row])-1])))
+
+			if(query=="col"):
+				for row in range(len(groupByFinalTable)):
+					# print(colNumber)
+					# print(groupByFinalTable[row][colNumber])
+					printingTable[row].append(groupByFinalTable[row][colNumber])
+
+		print(printingTable)
+		sys.exit()	
+
 
 	#OrderBy condition
 	if(orderByWay!=None):
@@ -401,6 +458,7 @@ def queryProcessor(query):
 	aggregateQueries = []
 	onlyAggrQueries = []
 	queriesWithoutAggrQueries = queryColumns.copy()
+	# print(queryColumns)
 	for idx in range(len(queryColumns)):
 		col = queryColumns[idx]
 		col = col.strip()
@@ -464,6 +522,7 @@ def queryProcessor(query):
 			onlyAggrQueries.append(col)
 			queriesWithoutAggrQueries.remove(col)
 			continue
+		aggregateQueries.append("col:"+col)
 
 	queryTables = queryWithoutSelect.split("from")[1].strip()
 	queryTables = queryTables.split("where")[0].strip()
