@@ -7,10 +7,6 @@ import sys
 import operator
 from operator import itemgetter
 
-# import pickle
-# import sqlparse
-
-
 #VARIABLES 
 metadata = {} #Contains whole metadata
 MetaDataFile = "./metadata.txt"
@@ -118,12 +114,12 @@ def avgOutput(colIdx,table):
 		sumValue += row[colIdx]
 	return (sumValue/len(table))
 
-# #COUNT QUERY OPERATION
-# def countOutput(colIdx,table):
-# 	sumValue = 0
-# 	for row in table:
-# 		sum += row[colIdx]
-# 	return sumValue
+#COUNT QUERY OPERATION
+def countOutput(colIdx,table):
+	cntValue = 0
+	for row in table:
+		cntValue += 1
+	return cntValue
 
 #DISTINCT FUNCTION
 def distinctTrue(table):
@@ -135,16 +131,16 @@ def distinctTrue(table):
 
 #INT DETERMINER
 def RepresentsInt(s):
-    try: 
-        float(s)
-        return True
-    except ValueError:
-        return False
+	try: 
+		float(s)
+		return True
+	except ValueError:
+		return False
 
 #WHERE QUERY APPLIER
 def whereQueryOutput(whereQuery,table,idx):
 	operations = {"!=": operator.ne, "=": operator.eq, ">=": operator.ge,
-           ">": operator.gt, "<": operator.lt, "<=": operator.le}
+		   ">": operator.gt, "<": operator.lt, "<=": operator.le}
 
 	oper = None
 	outputVector = []
@@ -192,13 +188,45 @@ def transpose(l1):
 	l2 = list(map(list, zip(*l1))) 
 	return l2 
 
+#PRINTING FINAL DATA
+def printData(table,Headers):
+	for iterator in range(len(Headers)):
+		row = Headers[iterator]
+		query = row.split(":")
+		queryCol = query[1]
+		query = query[0]
+		for tableName,colName in metadata.items():  
+			if(query == "col"):
+				if(iterator==len(Headers)-1):
+					if queryCol in colName:
+						print(tableName+"."+queryCol,end="")
+				else:		
+					if queryCol in colName:
+						print(tableName+"."+queryCol,end=",")
+			else:
+				if(iterator==len(Headers)-1):
+					if queryCol in colName:
+						print(query+"("+tableName+"."+queryCol+")",end="")
+				else:		
+					if queryCol in colName:
+						print(query+"("+tableName+"."+queryCol+")",end=",")
+
+	print()
+	for row in table:
+		for idx in range(len(row)):
+			if(idx==len(row)-1):
+				print(row[idx],end="")
+			else:	
+				print(row[idx],end=",")
+		print()
+		
+	print(table)
 #PRINTING THE OUTPUT
-def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,queryWhere,ANDFlag,ORFlag,orderByWay,orderByColumn,queryGroupByColumns):
+def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,queryWhere,ANDFlag,ORFlag,orderByWay,orderByColumn,queryGroupByColumns,Headers):
 	indices = []
 
 	#printing Header
 	columnsWithTables = []
-	# print(columns)
 	if(len(columns)!=0):	
 		for col in (columns):
 			col = col.strip()
@@ -247,38 +275,26 @@ def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,que
 		onlyGroupByFinalTableColumns = []
 		for row in finalTable:
 			colAsPerGroupBy = []
-			# elementsAsPerGroupBy = row.copy()
 			for attr in queryGroupByColumns:
 				colAsPerGroupBy.append(row[indexes[attr]])
-				# elementsAsPerGroupBy[indexes[attr]] = None
-			# elementsAsPerGroupBy = list(filter(None, elementsAsPerGroupBy)) 
 			if(colAsPerGroupBy not in groupByFinalTable):
-				# colAsPerGroupBy.append(elementsAsPerGroupBy)
 				groupByFinalTable.append(colAsPerGroupBy.copy())
 				onlyGroupByFinalTableColumns.append(colAsPerGroupBy.copy())
-			# else:
-				# requiredIdx = groupByFinalTable.index(colAsPerGroupBy)
-				# groupByFinalTable[requiredIdx].append(elementsAsPerGroupBy)
-
-		# print(groupByFinalTable)
 
 		#defining Indexes as per new table after groupBy operation
 		newIndexes = []
+		newIndexesDict = {}
 		count = 0
 		for col in queryGroupByColumns:
 			newIndexes.append([col,count])
+			newIndexesDict[col] = count
 			count+=1
 		for col in indexes:
 			if(col not in queryGroupByColumns):
 				newIndexes.append([col,count])
+				newIndexesDict[col] = count
 				count+=1
 
-		# print(newIndexes)
-		# sys.exit()	
-
-		# onlyGroupByFinalTableColumns = groupByFinalTable.copy()
-		print(onlyGroupByFinalTableColumns)
-		# transposedTable = transpose(finalTable.copy())
 		for row in groupByFinalTable:
 			for iterator in range(len(queryGroupByColumns),len(indexes)):
 				row.append([])
@@ -287,16 +303,69 @@ def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,que
 			temp = []
 			for attr in queryGroupByColumns:
 				temp.append(row[indexes[attr]])
-			# print(groupByFinalTable)
 
 			reqIndex = onlyGroupByFinalTableColumns.index(temp)
-			print(reqIndex)
 			for iterator in range(len(queryGroupByColumns),len(indexes)):
-				# print(iterator)
 				groupByFinalTable[reqIndex][newIndexes[iterator][1]].append(row[indexes[newIndexes[iterator][0]]])
 		
-		print(groupByFinalTable)
-		sys.exit()
+		# print(groupByFinalTable)
+		printingTable = []
+		for row in groupByFinalTable:
+			printingTable.append([])
+
+		for query in aggregateQueries:
+			query = query.split(":")
+			col = query[1]
+			query = query[0]
+			colNumber = newIndexesDict[col]
+			
+			if(query=="max"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(max(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append(groupByFinalTable[row][colNumber])
+
+			if(query=="min"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(min(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append(groupByFinalTable[row][colNumber])
+
+			if(query=="avg"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(sum(groupByFinalTable[row][colNumber])/len(sum(groupByFinalTable[row][colNumber])))
+					else:
+						printingTable[row].append(float(groupByFinalTable[row][colNumber]))
+
+			if(query=="sum"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(sum(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append((groupByFinalTable[row][colNumber])*len((groupByFinalTable[row][len(groupByFinalTable[row])-1])))
+
+			if(query=="count"):
+				for row in range(len(groupByFinalTable)):
+					if(isinstance(groupByFinalTable[row][colNumber],list)):
+						printingTable[row].append(len(groupByFinalTable[row][colNumber]))
+					else:
+						printingTable[row].append(len((groupByFinalTable[row][len(groupByFinalTable[row])-1])))
+
+			if(query=="col"):
+				for row in range(len(groupByFinalTable)):
+					printingTable[row].append(groupByFinalTable[row][colNumber])
+
+		if(orderByWay!=None):
+			printingTable.sort(key=itemgetter(newIndexesDict[orderByColumn]))
+			if(orderByWay=="desc"):
+				printingTable = printingTable[::-1]	
+
+		printData(printingTable,Headers)
+		sys.exit()	
+
 
 	#OrderBy condition
 	if(orderByWay!=None):
@@ -307,35 +376,41 @@ def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,que
 	#printing aggregate queries outputs
 	aggrHeaders = []
 	aggrValues = []
+	printingTable = []
+
 	for query in aggregateQueries:
+		aggregateUsed = 0
 		query = query.split(":")
 		col = query[1]
 		query = query[0]
 		if(query=="max"):
+			aggregateUsed = 1
 			val = maxOutput(int(indexes[col]),finalTable)
-			# print("max("+col+")")
-			aggrHeaders.append("max("+col+")")
-			aggrValues.append(val)
+			printingTable.append(val)
 
 		if(query=="min"):
+			aggregateUsed = 1
 			val = minOutput(int(indexes[col]),finalTable)
-			aggrHeaders.append("min("+col+")")
-			aggrValues.append(val)
+			printingTable.append(val)
 
 		if(query=="avg"):
+			aggregateUsed = 1
 			val = avgOutput(int(indexes[col]),finalTable)
-			aggrHeaders.append("average("+col+")")
 			aggrValues.append(val)
+			printingTable.append(val)
 
 		if(query=="sum"):
+			aggregateUsed = 1
 			val = sumOutput(int(indexes[col]),finalTable)
-			aggrHeaders.append("sum("+col+")")
-			aggrValues.append(val)
+			printingTable.append(val)
 
 		if(query=="count"):
+			aggregateUsed = 1
 			val = countOutput(int(indexes[col]),finalTable)
-			aggrHeaders.append("count("+col+")")
-			aggrValues.append(val)
+			printingTable.append(val)
+
+	if(aggregateUsed == 1):
+		printingTable = [printingTable]
 
 	#getting printing table
 	if(len(columns)!=0):
@@ -350,21 +425,7 @@ def printOutput(columns,tablesArray,finalTable,aggregateQueries,distinctFlag,que
 		if(distinctFlag == True):
 			printingTable = distinctTrue(printingTable)
 
-	#printing table 
-	if(len(columns)!=0):
-		for row in printingTable:
-			for val in row:
-				print(val,end=" ")
-			print()
-
-	#printing aggreagates		
-	if(len(aggrHeaders)!=0):
-		for row in aggrHeaders:
-			print(row,end="		")
-		print()
-		for row in aggrValues:
-			print(row,end="		")	
-		print()
+	printData(printingTable,Headers)
 
 #REMOVING SPACES FUNCTION
 def useSplit(array):
@@ -379,6 +440,7 @@ def queryValidator(query):
 
 #QUERY PROCESSING
 def queryProcessor(query):
+	# originalQuery = (query)
 	query = query.lower()
 	if(queryValidator(query)==False):
 		print("Entered Query is of Incorrect format. \nCorrect format of Query is: Select <columns> from <tables> where <condition>")
@@ -387,9 +449,16 @@ def queryProcessor(query):
 	distinctFlag = False	
 	ANDFlag = False
 	ORFlag = False
+	CountStarFlag = False
+	if(bool(re.match('.*count\(.*\*.*\).*', query))):
+		CountStarFlag = True
+		query.replace("count\(.*\*.*\)","count(StarFlag)")
+	if(query.count('*')>1):
+		print("Error: There is no column named *")
+		sys.exit()
 
 	queryWithoutSelect = query.replace("select","").strip()
-	# print(query,queryWithoutSelect)
+
 	queryColumns = queryWithoutSelect.split("from")[0].strip()
 	if bool(re.match('^distinct.*', queryColumns)):
 		distinctFlag = True
@@ -412,7 +481,6 @@ def queryProcessor(query):
 				print("Error: More than one column is used with aggregate functions \nOnly one column is allowed with aggregate functions")
 				sys.exit()
 			aggregateQueries.append("max:"+temp)
-			# aggregateQueries["maxQueries"].append(temp)
 			onlyAggrQueries.append(col)
 			queriesWithoutAggrQueries.remove(col)
 			continue
@@ -424,7 +492,6 @@ def queryProcessor(query):
 				print("Error: More than one column is used with aggregate functions \nOnly one column is allowed with aggregate functions")
 				sys.exit()
 			aggregateQueries.append("min:"+temp)
-			# aggregateQueries["minQueries"].append(temp)
 			onlyAggrQueries.append(col)
 			queriesWithoutAggrQueries.remove(col)
 			continue
@@ -436,7 +503,6 @@ def queryProcessor(query):
 				print("Error: More than one column is used with aggregate functions \nOnly one column is allowed with aggregate functions")
 				sys.exit()
 			aggregateQueries.append("avg:"+temp)
-			# aggregateQueries["avgQueries"].append(temp)
 			onlyAggrQueries.append(col)
 			queriesWithoutAggrQueries.remove(col)
 			continue
@@ -448,7 +514,6 @@ def queryProcessor(query):
 				print("Error: More than one column is used with aggregate functions \nOnly one column is allowed with aggregate functions")
 				sys.exit()
 			aggregateQueries.append("sum:"+temp)
-			# aggregateQueries["sumQueries"].append(temp)
 			onlyAggrQueries.append(col)
 			queriesWithoutAggrQueries.remove(col)
 			continue
@@ -460,10 +525,12 @@ def queryProcessor(query):
 				print("Error: More than one column is used with aggregate functions \nOnly one column is allowed with aggregate functions")
 				sys.exit()
 			aggregateQueries.append("cnt:"+temp)
-			# aggregateQueries["countQueries"].append(temp)
 			onlyAggrQueries.append(col)
 			queriesWithoutAggrQueries.remove(col)
 			continue
+		aggregateQueries.append("col:"+col)
+	Headers = aggregateQueries.copy()
+
 
 	queryTables = queryWithoutSelect.split("from")[1].strip()
 	queryTables = queryTables.split("where")[0].strip()
@@ -471,6 +538,16 @@ def queryProcessor(query):
 	queryTables = queryTables.split("order")[0].strip()
 	queryTables = queryTables.split(",")
 	queryTables = useSplit(queryTables)
+
+
+	# allColumnsString = ""
+
+	# for idx in queryTables:
+	# 	for iterator in metadata[idx]:
+	# 		allColumnsString = allColumnsString+str(iterator)+" "
+
+	# queryWithoutSelect = queryWithoutSelect.replace('*',allColumnsString)
+
 	queryWhere = None
 	if(bool(re.match('.*where.*', queryWithoutSelect))):
 		queryWhere = queryWithoutSelect.split("where")[1].strip()
@@ -491,10 +568,8 @@ def queryProcessor(query):
 	queryOrderWay = None
 	queryOrderColumn = None
 	if(bool(re.match('.*order by.*', queryWithoutSelect))):
-		queryOrderWay = None
+		queryOrderWay = "asc"
 		queryOrderColumn = None
-		# print(queryWithoutSelect)
-		# print(queryWithoutSelect.split("order by"))
 		queryOrder = queryWithoutSelect.split("order by")[1].strip()
 		queryOrder = queryOrder.split("group")[0].strip()
 		queryOrder = queryOrder.split("where")[0].strip()
@@ -507,8 +582,7 @@ def queryProcessor(query):
 		queryOrderColumn = queryOrder.strip()
 
 	finalTable = getTables(queryTables)
-	# print(finalTable)
-	printOutput(queriesWithoutAggrQueries,queryTables,finalTable,aggregateQueries,distinctFlag,queryWhere,ANDFlag,ORFlag,queryOrderWay,queryOrderColumn,queryGroupByColumns)
+	printOutput(queriesWithoutAggrQueries,queryTables,finalTable,aggregateQueries,distinctFlag,queryWhere,ANDFlag,ORFlag,queryOrderWay,queryOrderColumn,queryGroupByColumns,Headers)
 
 #MAIN FUNCTION
 def main():
